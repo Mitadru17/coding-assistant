@@ -22,11 +22,6 @@ app.use(express.static(path.join(__dirname, 'client/build')));
 // API Routes
 app.use('/api', geminiRoutes);
 
-// Serve React app for any other requests
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
-});
-
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err.message);
@@ -36,6 +31,12 @@ app.use((err, req, res, next) => {
       status: err.statusCode || 500
     }
   });
+});
+
+// Serve React app for any other requests
+// This must be after the API routes and error handling
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
 });
 
 // Start server
