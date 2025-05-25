@@ -8,20 +8,41 @@ const geminiRoutes = require('./routes/geminiRoutes');
 console.log('Environment variables loaded:');
 console.log('HF_API_KEY:', process.env.HF_API_KEY ? 'API Key is set' : 'API Key is not set');
 console.log('PORT:', process.env.PORT);
+console.log('NODE_ENV:', process.env.NODE_ENV);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Configure CORS
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? [/\.vercel\.app$/, /localhost/] // Allow Vercel domains and localhost
+    : '*', // Allow all origins in development
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
 
 // API Routes
 app.use('/api', geminiRoutes);
 
+// API health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', environment: process.env.NODE_ENV });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Error:', err.message);
+  console.error('Error:', err.message, err.stack);
   res.status(err.statusCode || 500).json({
     error: {
       message: err.message || 'Internal Server Error',
@@ -45,5 +66,5 @@ app.get('*', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 }); 

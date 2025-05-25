@@ -10,6 +10,7 @@ router.get('/', (req, res) => {
   res.json({ 
     status: 'success', 
     message: 'Coding Assistant API is running',
+    timestamp: new Date().toISOString(),
     endpoints: ['/api/daily-question', '/api/explanation', '/api/chat']
   });
 });
@@ -19,13 +20,25 @@ router.get('/', (req, res) => {
  * Returns a daily coding interview question
  */
 router.get('/daily-question', async (req, res, next) => {
+  console.log('Received request for daily question');
   try {
     const question = await geminiService.generateDailyQuestion();
-    res.json({ question });
+    console.log('Question generated successfully');
+    
+    if (!question || typeof question !== 'string' || question.trim() === '') {
+      throw new Error('Invalid question generated');
+    }
+    
+    res.json({ 
+      question,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
-    console.error('Error in daily question route:', error);
+    console.error('Error in daily question route:', error.message, error.stack);
     res.status(500).json({ 
-      question: 'Sorry, failed to retrieve a daily question. Please try again.' 
+      error: true,
+      question: 'Sorry, failed to retrieve a daily question. Please try again.',
+      message: error.message
     });
   }
 });
@@ -35,21 +48,34 @@ router.get('/daily-question', async (req, res, next) => {
  * Returns a detailed explanation for a coding interview question
  */
 router.post('/explanation', async (req, res, next) => {
+  console.log('Received request for explanation');
   try {
     const { question } = req.body;
     
-    if (!question) {
+    if (!question || typeof question !== 'string' || question.trim() === '') {
       return res.status(400).json({
-        explanation: 'Question is required'
+        error: true,
+        explanation: 'Question is required and must be a non-empty string'
       });
     }
     
+    console.log('Generating explanation for question:', question.substring(0, 100) + (question.length > 100 ? '...' : ''));
     const explanation = await geminiService.generateExplanation(question);
-    res.json({ explanation });
+    
+    if (!explanation || typeof explanation !== 'string') {
+      throw new Error('Invalid explanation generated');
+    }
+    
+    res.json({ 
+      explanation,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
-    console.error('Error in explanation route:', error);
+    console.error('Error in explanation route:', error.message, error.stack);
     res.status(500).json({ 
-      explanation: 'Sorry, failed to generate an explanation. Please try again.' 
+      error: true,
+      explanation: 'Sorry, failed to generate an explanation. Please try again.',
+      message: error.message
     });
   }
 });
@@ -59,21 +85,34 @@ router.post('/explanation', async (req, res, next) => {
  * Handles chatbot interactions for coding and interview questions
  */
 router.post('/chat', async (req, res, next) => {
+  console.log('Received chat request');
   try {
     const { message } = req.body;
     
-    if (!message) {
+    if (!message || typeof message !== 'string' || message.trim() === '') {
       return res.status(400).json({
-        response: 'Message is required'
+        error: true,
+        response: 'Message is required and must be a non-empty string'
       });
     }
     
+    console.log('Processing chat message:', message.substring(0, 100) + (message.length > 100 ? '...' : ''));
     const response = await geminiService.chatWithBot(message);
-    res.json({ response });
+    
+    if (!response || typeof response !== 'string') {
+      throw new Error('Invalid response generated');
+    }
+    
+    res.json({ 
+      response,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
-    console.error('Error in chat route:', error);
+    console.error('Error in chat route:', error.message, error.stack);
     res.status(500).json({ 
-      response: 'Sorry, failed to process your message. Please try again.' 
+      error: true,
+      response: 'Sorry, failed to process your message. Please try again.',
+      message: error.message
     });
   }
 });

@@ -7,11 +7,71 @@ const axios = require('axios');
 const apiKey = process.env.HF_API_KEY;
 const API_URL = "https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1";
 
+// Log API setup
+console.log('Hugging Face API URL:', API_URL);
+console.log('API Key configured:', apiKey ? 'Yes' : 'No');
+
 // Configure headers for API requests
 const headers = {
   "Authorization": `Bearer ${apiKey}`,
   "Content-Type": "application/json"
 };
+
+// Create axios instance with retry logic
+const apiClient = axios.create({
+  headers,
+  timeout: 60000 // 60 second timeout
+});
+
+// Add a retry mechanism
+const MAX_RETRIES = 2;
+apiClient.interceptors.response.use(null, async (error) => {
+  const { config } = error;
+  if (!config || !config.retry) {
+    return Promise.reject(error);
+  }
+  
+  config.retry -= 1;
+  if (config.retry === 0) {
+    return Promise.reject(error);
+  }
+  
+  console.log(`Retrying API request (${MAX_RETRIES - config.retry + 1}/${MAX_RETRIES})...`);
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return apiClient(config);
+});
+
+/**
+ * Makes a request to the Hugging Face API with retry logic
+ */
+async function makeApiRequest(payload) {
+  try {
+    const config = {
+      retry: MAX_RETRIES,
+      method: 'post',
+      url: API_URL,
+      data: payload
+    };
+    
+    console.log('Making API request with payload:', JSON.stringify(payload).substring(0, 200) + '...');
+    const response = await apiClient(config);
+    console.log('API response received:', response.status);
+    
+    if (!response.data || !response.data[0] || !response.data[0].generated_text) {
+      console.error('Invalid API response format:', JSON.stringify(response.data).substring(0, 200));
+      throw new Error('Invalid response format from API');
+    }
+    
+    return response.data[0].generated_text;
+  } catch (error) {
+    console.error('API request failed:', error.message);
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', JSON.stringify(error.response.data).substring(0, 500));
+    }
+    throw error;
+  }
+}
 
 /**
  * Generates a daily coding interview question
@@ -35,8 +95,7 @@ async function generateDailyQuestion() {
       }
     };
     
-    const response = await axios.post(API_URL, payload, { headers });
-    return response.data[0].generated_text;
+    return await makeApiRequest(payload);
   } catch (error) {
     console.error('Error generating daily question:', error);
     return "Sorry, I couldn't generate a question at this time. Please try again later.";
@@ -67,8 +126,7 @@ async function generateExplanation(question) {
       }
     };
     
-    const response = await axios.post(API_URL, payload, { headers });
-    return response.data[0].generated_text;
+    return await makeApiRequest(payload);
   } catch (error) {
     console.error('Error generating explanation:', error);
     return "Sorry, I couldn't generate an explanation at this time. Please try again later.";
@@ -95,8 +153,7 @@ Question: ${userMessage} [/INST]`,
       }
     };
     
-    const response = await axios.post(API_URL, payload, { headers });
-    return response.data[0].generated_text;
+    return await makeApiRequest(payload);
   } catch (error) {
     console.error('Error in chatbot conversation:', error);
     return "I'm currently experiencing some issues. Please try again later.";
