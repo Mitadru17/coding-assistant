@@ -16,10 +16,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from the React app build directory
-app.use(express.static(path.join(__dirname, 'client/build')));
-
-// API Routes
+// API Routes - must come before static files to avoid conflicts
 app.use('/api', geminiRoutes);
 
 // Error handling middleware
@@ -33,9 +30,11 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Serve React app for any other requests
-// This must be after the API routes and error handling
-app.get('*', (req, res) => {
+// Serve static files from the React app build directory
+app.use(express.static(path.join(__dirname, 'client/build')));
+
+// Final catch-all route to index.html
+app.get('/', function(req, res) {
   res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
 });
 
