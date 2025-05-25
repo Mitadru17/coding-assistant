@@ -17,12 +17,18 @@ router.get('/', (req, res) => {
 
 /**
  * GET /daily-question
- * Returns a daily coding interview question
+ * Returns a coding interview question
  */
 router.get('/daily-question', async (req, res, next) => {
   console.log('Received request for daily question');
   try {
-    const question = await geminiService.generateDailyQuestion();
+    // Add cache control headers to prevent caching
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
+    // Force a new question by adding a timestamp parameter
+    const question = await geminiService.generateDailyQuestion(Date.now());
     console.log('Question generated successfully');
     
     if (!question || typeof question !== 'string' || question.trim() === '') {

@@ -57,12 +57,23 @@ async function makeApiRequest(payload) {
     const response = await apiClient(config);
     console.log('API response received:', response.status);
     
-    if (!response.data || !response.data[0] || !response.data[0].generated_text) {
-      console.error('Invalid API response format:', JSON.stringify(response.data).substring(0, 200));
-      throw new Error('Invalid response format from API');
+    // Handle different response formats from Hugging Face
+    if (response.data && typeof response.data === 'object') {
+      if (Array.isArray(response.data) && response.data[0] && response.data[0].generated_text) {
+        return cleanResponse(response.data[0].generated_text);
+      } else if (response.data.generated_text) {
+        return cleanResponse(response.data.generated_text);
+      } else if (response.data.choices && response.data.choices[0] && response.data.choices[0].text) {
+        return cleanResponse(response.data.choices[0].text);
+      } else {
+        console.log('Response data structure:', JSON.stringify(response.data).substring(0, 500));
+        // If we can't identify a specific format, return the whole response as string
+        return cleanResponse(JSON.stringify(response.data));
+      }
     }
     
-    return response.data[0].generated_text;
+    console.error('Invalid API response format:', JSON.stringify(response.data).substring(0, 200));
+    throw new Error('Invalid response format from API');
   } catch (error) {
     console.error('API request failed:', error.message);
     if (error.response) {
@@ -74,28 +85,84 @@ async function makeApiRequest(payload) {
 }
 
 /**
+ * Clean the response text to remove prompt/instruction text and formatting artifacts
+ * @param {string} text - The raw response text
+ * @returns {string} The cleaned response
+ */
+function cleanResponse(text) {
+  if (!text) return '';
+  
+  // Remove common instruction patterns
+  let cleaned = text.replace(/^.*?\[INST\].*?\[\/INST\]/s, '').trim();
+  
+  // Remove HTML-like tags
+  cleaned = cleaned.replace(/<s>|<\/s>/g, '');
+  
+  // Remove "Question from student:" and similar prefixes
+  cleaned = cleaned.replace(/Question from student:.*?$/m, '').trim();
+  
+  // Remove any remaining prompt text patterns
+  cleaned = cleaned.replace(/You are CodeMentor,.*?expertise\./s, '').trim();
+  cleaned = cleaned.replace(/Your responses are:.*?concept/s, '').trim();
+  cleaned = cleaned.replace(/Respond with a helpful.*?examples\./s, '').trim();
+  
+  // Clean up any extra whitespace
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
+  
+  // Remove "Hello! I'd be happy to explain" and similar openings
+  cleaned = cleaned.replace(/^(Hello!|Hi there!|Sure,|I'd be happy to|Let me) .*(explain|describe|clarify|help you understand) .*?\./s, '').trim();
+  
+  return cleaned;
+}
+
+/**
  * Generates a daily coding interview question
+ * @param {number} timestamp - Optional timestamp to prevent caching
  * @returns {Promise<string>} The generated question with difficulty and tags
  */
-async function generateDailyQuestion() {
+async function generateDailyQuestion(timestamp = Date.now()) {
   try {
+    const prompt = `<s>[INST] Generate one coding interview question with difficulty level and tags.
+Format exactly as:
+Q: [question]
+Difficulty: [Easy/Medium/Hard]
+Tags: [tag1, tag2, ...]
+
+Make it concise and challenging, focused on algorithms or data structures. 
+Timestamp: ${timestamp} [/INST]`;
+    
     const payload = {
-      inputs: `Generate a coding interview question with difficulty level and tags.
-      Format it as:
-      Q: [question]
-      Difficulty: [Easy/Medium/Hard]
-      Tags: [tag1, tag2, ...]
-      
-      Make it concise and clear.`,
+      inputs: prompt,
       parameters: {
-        max_new_tokens: 250,
-        temperature: 0.7,
+        max_new_tokens: 300,
+        temperature: 0.8,
         top_p: 0.95,
-        do_sample: true
+        do_sample: true,
+        // Add cache busting parameter
+        seed: Math.floor(Math.random() * 100000)
       }
     };
     
-    return await makeApiRequest(payload);
+    const result = await makeApiRequest(payload);
+    
+    // Additional cleanup for question format
+    let cleanedResult = result;
+    
+    // Remove any potential model preamble before the Q:
+    if (!cleanedResult.startsWith('Q:')) {
+      cleanedResult = cleanedResult.replace(/^.*?Q:/s, 'Q:').trim();
+    }
+    
+    // Remove any trailing text after the Tags section
+    const tagsMatch = cleanedResult.match(/Tags:.*?(?:\n|$)/s);
+    if (tagsMatch) {
+      const tagsEndIndex = tagsMatch.index + tagsMatch[0].length;
+      cleanedResult = cleanedResult.substring(0, tagsEndIndex).trim();
+    }
+    
+    console.log('Generated question:', cleanedResult.substring(0, 100) + '...');
+    
+    return cleanedResult;
   } catch (error) {
     console.error('Error generating daily question:', error);
     return "Sorry, I couldn't generate a question at this time. Please try again later.";
@@ -109,24 +176,33 @@ async function generateDailyQuestion() {
  */
 async function generateExplanation(question) {
   try {
+    const prompt = `<s>[INST] Provide a detailed explanation for this coding interview question:
+
+${question}
+
+Include:
+1. Problem understanding
+2. Approach and algorithm
+3. Code implementation in Python
+4. Time and space complexity
+5. Test cases
+
+Use markdown formatting for structure. [/INST]`;
+    
     const payload = {
-      inputs: `Question: ${question}
-      
-      Provide a detailed explanation for this coding interview question, including:
-      1. Step-by-step approach
-      2. Optimal algorithm
-      3. Code implementation (preferably in Python)
-      4. Time and space complexity analysis
-      5. Edge cases to consider`,
+      inputs: prompt,
       parameters: {
-        max_new_tokens: 800,
+        max_new_tokens: 1000,
         temperature: 0.7,
         top_p: 0.95,
         do_sample: true
       }
     };
     
-    return await makeApiRequest(payload);
+    const result = await makeApiRequest(payload);
+    console.log('Generated explanation length:', result.length);
+    
+    return result;
   } catch (error) {
     console.error('Error generating explanation:', error);
     return "Sorry, I couldn't generate an explanation at this time. Please try again later.";
@@ -140,20 +216,24 @@ async function generateExplanation(question) {
  */
 async function chatWithBot(userMessage) {
   try {
-    const payload = {
-      inputs: `<s>[INST] You are a helpful coding assistant. Answer the following question about programming, algorithms, data structures, or coding interviews in a detailed and educational way.
+    const prompt = `<s>[INST] You are CodeMentor, an expert coding tutor specialized in algorithms, data structures, and programming concepts. Answer the following question concisely and clearly without repeating the question or including any preamble.
 
-Question: ${userMessage} [/INST]`,
+Question: ${userMessage} [/INST]`;
+    
+    const payload = {
+      inputs: prompt,
       parameters: {
-        max_new_tokens: 500,
+        max_new_tokens: 800,
         temperature: 0.7,
         top_p: 0.95,
-        do_sample: true,
-        return_full_text: false
+        do_sample: true
       }
     };
     
-    return await makeApiRequest(payload);
+    const result = await makeApiRequest(payload);
+    console.log('Generated chat response length:', result.length);
+    
+    return result;
   } catch (error) {
     console.error('Error in chatbot conversation:', error);
     return "I'm currently experiencing some issues. Please try again later.";
