@@ -1,9 +1,8 @@
 import axios from 'axios';
 
 // Determine the correct base URL based on the environment
-// For Vercel deployments, we need to use absolute URLs in production
 const baseURL = process.env.NODE_ENV === 'production' 
-  ? '' // Empty string makes it use relative URLs which works for same-domain deployment
+  ? window.location.origin // Use the current domain (very important for Vercel)
   : 'http://localhost:3000'; // For local development
 
 console.log('API base URL:', baseURL, 'Environment:', process.env.NODE_ENV); // Debug log
@@ -58,7 +57,10 @@ export const chatWithBot = async (message) => {
 
 export const getDailyQuestion = async () => {
   try {
-    const response = await api.get('/api/daily-question');
+    const response = await api.get('/api/daily-question', {
+      // Add cache-busting parameter
+      params: { _t: new Date().getTime() }
+    });
     return response.data;
   } catch (error) {
     console.error('Daily question error:', error.message);
