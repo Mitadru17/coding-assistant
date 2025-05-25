@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import { chatWithBot } from '../utils/api';
 import './ChatInterface.css';
 
 const ChatInterface = () => {
@@ -24,12 +24,12 @@ const ChatInterface = () => {
     setIsLoading(true);
     
     try {
-      // Call backend API
-      const response = await axios.post('/api/chat', { message: userMessage.text });
+      // Call backend API using our utility function
+      const data = await chatWithBot(userMessage.text);
       
       // Add bot response to chat
       const botMessage = {
-        text: response.data.response,
+        text: data.response,
         sender: 'bot',
         timestamp: new Date().toISOString()
       };

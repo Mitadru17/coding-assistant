@@ -1,125 +1,16 @@
 /**
- * Mock service that returns hardcoded responses
- * This is a fallback since we're experiencing issues with the Hugging Face API
+ * Service that uses Hugging Face API to generate responses
  */
+const axios = require('axios');
 
-// Sample coding questions
-const sampleQuestions = [
-  `Q: Given an array of integers, find two numbers such that they add up to a specific target.
-Difficulty: Easy
-Tags: Arrays, Hash Table, Two Pointers`,
+// Initialize the Hugging Face API with your API key
+const apiKey = process.env.HF_API_KEY;
+const API_URL = "https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1";
 
-  `Q: Implement a function to check if a binary tree is balanced.
-Difficulty: Medium
-Tags: Trees, Depth-First Search, Recursion`,
-
-  `Q: Design and implement an LRU (Least Recently Used) cache.
-Difficulty: Hard
-Tags: Hash Table, Linked List, Design`
-];
-
-// Sample explanations
-const sampleExplanations = {
-  default: `Here's a step-by-step solution:
-
-1. Understand the problem:
-   - We need to find a pair of numbers in an array that sum to a target value.
-
-2. Algorithm approach:
-   - Use a hash map to store elements we've seen so far
-   - For each element, check if (target - element) exists in the hash map
-   - If it does, we found our pair
-   - If not, add the current element to the hash map
-
-3. Python Implementation:
-
-\`\`\`python
-def two_sum(nums, target):
-    # Hash map to store numbers we've seen
-    seen = {}
-    
-    # Loop through each number
-    for i, num in enumerate(nums):
-        # Calculate the complement we need
-        complement = target - num
-        
-        # If complement exists in our hash map
-        if complement in seen:
-            # Return the indices of the two numbers
-            return [seen[complement], i]
-        
-        # Store current number and its index
-        seen[num] = i
-    
-    # If no solution is found
-    return None
-\`\`\`
-
-4. Time Complexity: O(n) - we traverse the array once
-5. Space Complexity: O(n) - in the worst case, we store all elements in the hash map
-
-5. Edge cases:
-   - Empty array: return None
-   - No solution exists: return None
-   - Multiple solutions: return the first one found`,
-
-  linkedList: `Here's how to reverse a linked list:
-
-1. Algorithm approach:
-   - Use three pointers: prev, current, and next
-   - Iterate through the list, reversing each pointer
-
-2. Python Implementation:
-
-\`\`\`python
-def reverse_linked_list(head):
-    prev = None
-    current = head
-    
-    while current:
-        # Save next node
-        next_node = current.next
-        
-        # Reverse the pointer
-        current.next = prev
-        
-        # Move pointers forward
-        prev = current
-        current = next_node
-    
-    # New head is the previous tail
-    return prev
-\`\`\`
-
-3. Time Complexity: O(n)
-4. Space Complexity: O(1) - only using a constant amount of extra space`,
-
-  sorting: `Common sorting algorithms:
-
-1. Bubble Sort:
-   - Time Complexity: O(n²)
-   - Space Complexity: O(1)
-   - Simple but inefficient for large lists
-
-2. Merge Sort:
-   - Time Complexity: O(n log n)
-   - Space Complexity: O(n)
-   - Divide and conquer approach, stable sort
-
-3. Quick Sort:
-   - Time Complexity: Average O(n log n), Worst O(n²)
-   - Space Complexity: O(log n)
-   - Usually faster in practice than merge sort
-
-4. Heap Sort:
-   - Time Complexity: O(n log n)
-   - Space Complexity: O(1)
-   - In-place sorting algorithm
-
-5. Insertion Sort:
-   - Time Complexity: O(n²)
-   - Space Complexity: O(1)
-   - Efficient for small data sets`
+// Configure headers for API requests
+const headers = {
+  "Authorization": `Bearer ${apiKey}`,
+  "Content-Type": "application/json"
 };
 
 /**
@@ -128,12 +19,27 @@ def reverse_linked_list(head):
  */
 async function generateDailyQuestion() {
   try {
-    // Return a random sample question
-    const randomIndex = Math.floor(Math.random() * sampleQuestions.length);
-    return sampleQuestions[randomIndex];
+    const payload = {
+      inputs: `Generate a coding interview question with difficulty level and tags.
+      Format it as:
+      Q: [question]
+      Difficulty: [Easy/Medium/Hard]
+      Tags: [tag1, tag2, ...]
+      
+      Make it concise and clear.`,
+      parameters: {
+        max_new_tokens: 250,
+        temperature: 0.7,
+        top_p: 0.95,
+        do_sample: true
+      }
+    };
+    
+    const response = await axios.post(API_URL, payload, { headers });
+    return response.data[0].generated_text;
   } catch (error) {
     console.error('Error generating daily question:', error);
-    return sampleQuestions[0]; // Return the first sample question as fallback
+    return "Sorry, I couldn't generate a question at this time. Please try again later.";
   }
 }
 
@@ -144,17 +50,28 @@ async function generateDailyQuestion() {
  */
 async function generateExplanation(question) {
   try {
-    // Check the question content to return a relevant explanation
-    if (question.toLowerCase().includes('linked list')) {
-      return sampleExplanations.linkedList;
-    } else if (question.toLowerCase().includes('sort')) {
-      return sampleExplanations.sorting;
-    } else {
-      return sampleExplanations.default;
-    }
+    const payload = {
+      inputs: `Question: ${question}
+      
+      Provide a detailed explanation for this coding interview question, including:
+      1. Step-by-step approach
+      2. Optimal algorithm
+      3. Code implementation (preferably in Python)
+      4. Time and space complexity analysis
+      5. Edge cases to consider`,
+      parameters: {
+        max_new_tokens: 800,
+        temperature: 0.7,
+        top_p: 0.95,
+        do_sample: true
+      }
+    };
+    
+    const response = await axios.post(API_URL, payload, { headers });
+    return response.data[0].generated_text;
   } catch (error) {
     console.error('Error generating explanation:', error);
-    return sampleExplanations.default; // Return the default explanation as fallback
+    return "Sorry, I couldn't generate an explanation at this time. Please try again later.";
   }
 }
 
@@ -165,23 +82,21 @@ async function generateExplanation(question) {
  */
 async function chatWithBot(userMessage) {
   try {
-    // Check the message content to return a relevant response
-    if (userMessage.toLowerCase().includes('linked list')) {
-      return sampleExplanations.linkedList;
-    } else if (userMessage.toLowerCase().includes('sort')) {
-      return sampleExplanations.sorting;
-    } else {
-      return `I'm a coding assistant and can help with algorithm and data structure questions. 
-      
-For example, I can explain:
-- Arrays and strings algorithms
-- Linked lists operations
-- Sorting and searching algorithms
-- Dynamic programming
-- Tree and graph traversals
+    const payload = {
+      inputs: `<s>[INST] You are a helpful coding assistant. Answer the following question about programming, algorithms, data structures, or coding interviews in a detailed and educational way.
 
-Please ask a specific question about one of these topics!`;
-    }
+Question: ${userMessage} [/INST]`,
+      parameters: {
+        max_new_tokens: 500,
+        temperature: 0.7,
+        top_p: 0.95,
+        do_sample: true,
+        return_full_text: false
+      }
+    };
+    
+    const response = await axios.post(API_URL, payload, { headers });
+    return response.data[0].generated_text;
   } catch (error) {
     console.error('Error in chatbot conversation:', error);
     return "I'm currently experiencing some issues. Please try again later.";

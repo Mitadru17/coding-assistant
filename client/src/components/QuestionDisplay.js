@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getDailyQuestion } from '../utils/api';
 import './QuestionDisplay.css';
 
 const QuestionDisplay = ({ question, setQuestion, isLoading, setIsLoading }) => {
@@ -15,11 +15,11 @@ const QuestionDisplay = ({ question, setQuestion, isLoading, setIsLoading }) => 
     setIsLoading(true);
     setShowContent(false);
     try {
-      const response = await axios.get('/api/daily-question');
+      const data = await getDailyQuestion();
       
       // Short delay for better UX
       setTimeout(() => {
-        setQuestion(response.data.question);
+        setQuestion(data.question);
         setIsLoading(false);
       }, 800);
     } catch (error) {

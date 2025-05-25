@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CSSTransition } from 'react-transition-group';
-import axios from 'axios';
+import { getExplanation } from '../utils/api';
 import './ExplanationForm.css';
 
 const ExplanationForm = ({ setExplanation, isLoading, setIsLoading }) => {
@@ -20,10 +20,8 @@ const ExplanationForm = ({ setExplanation, isLoading, setIsLoading }) => {
     try {
       // Short delay for better UX
       setTimeout(async () => {
-        const response = await axios.post('/api/explanation', {
-          question: questionText
-        });
-        setExplanation(response.data.explanation);
+        const data = await getExplanation(questionText);
+        setExplanation(data.explanation);
         setIsLoading(false);
       }, 800);
     } catch (error) {

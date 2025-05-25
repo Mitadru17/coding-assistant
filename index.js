@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// API Routes - must come before static files to avoid conflicts
+// API Routes
 app.use('/api', geminiRoutes);
 
 // Error handling middleware
@@ -30,16 +30,18 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Only serve static files when not running on Vercel
-if (process.env.NODE_ENV !== 'production') {
-  // Serve static files from the React app build directory
-  app.use(express.static(path.join(__dirname, 'client/build')));
-  
-  // Final catch-all route to index.html
-  app.get('/', function(req, res) {
-    res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
-  });
-}
+// Serve static files from the React app build directory
+app.use(express.static(path.join(__dirname, 'client/build')));
+
+// Root route handler for the server
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+});
+
+// Final catch-all route to index.html for client-side routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+});
 
 // Start server
 app.listen(PORT, () => {
