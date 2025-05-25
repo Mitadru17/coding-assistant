@@ -3,6 +3,18 @@ const router = express.Router();
 const geminiService = require('../services/geminiService');
 
 /**
+ * GET /
+ * Root route - returns a simple status message
+ */
+router.get('/', (req, res) => {
+  res.json({ 
+    status: 'success', 
+    message: 'Coding Assistant API is running',
+    endpoints: ['/daily-question', '/explanation', '/chat']
+  });
+});
+
+/**
  * GET /daily-question
  * Returns a daily coding interview question
  */
