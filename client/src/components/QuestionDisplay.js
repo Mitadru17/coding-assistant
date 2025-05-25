@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './QuestionDisplay.css';
 
+// Backend API URL
+const API_URL = process.env.REACT_APP_API_URL || 'https://basic-chatbot-orefb38c6-mitadrus-projects.vercel.app';
+
 const QuestionDisplay = ({ question, setQuestion, isLoading, setIsLoading }) => {
   const [showContent, setShowContent] = useState(false);
   
@@ -15,7 +18,7 @@ const QuestionDisplay = ({ question, setQuestion, isLoading, setIsLoading }) => 
     setIsLoading(true);
     setShowContent(false);
     try {
-      const response = await axios.get('/api/daily-question');
+      const response = await axios.get(`${API_URL}/api/daily-question`);
       
       // Short delay for better UX
       setTimeout(() => {
