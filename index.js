@@ -30,13 +30,16 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Serve static files from the React app build directory
-app.use(express.static(path.join(__dirname, 'client/build')));
-
-// Final catch-all route to index.html
-app.get('/', function(req, res) {
-  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
-});
+// Only serve static files when not running on Vercel
+if (process.env.NODE_ENV !== 'production') {
+  // Serve static files from the React app build directory
+  app.use(express.static(path.join(__dirname, 'client/build')));
+  
+  // Final catch-all route to index.html
+  app.get('/', function(req, res) {
+    res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+  });
+}
 
 // Start server
 app.listen(PORT, () => {

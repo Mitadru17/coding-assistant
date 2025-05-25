@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import './ChatInterface.css';
 
-// Backend API URL
-const API_URL = process.env.REACT_APP_API_URL || 'https://basic-chatbot-orefb38c6-mitadrus-projects.vercel.app';
-
 const ChatInterface = () => {
   const [messages, setMessages] = useState([]);
   const [userInput, setUserInput] = useState('');
@@ -28,7 +25,7 @@ const ChatInterface = () => {
     
     try {
       // Call backend API
-      const response = await axios.post(`${API_URL}/api/chat`, { message: userMessage.text });
+      const response = await axios.post('/api/chat', { message: userMessage.text });
       
       // Add bot response to chat
       const botMessage = {

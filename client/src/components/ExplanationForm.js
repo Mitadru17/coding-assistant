@@ -3,9 +3,6 @@ import { CSSTransition } from 'react-transition-group';
 import axios from 'axios';
 import './ExplanationForm.css';
 
-// Backend API URL
-const API_URL = process.env.REACT_APP_API_URL || 'https://basic-chatbot-orefb38c6-mitadrus-projects.vercel.app';
-
 const ExplanationForm = ({ setExplanation, isLoading, setIsLoading }) => {
   const [questionText, setQuestionText] = useState('');
   const [isFormVisible, setIsFormVisible] = useState(true);
@@ -23,7 +20,7 @@ const ExplanationForm = ({ setExplanation, isLoading, setIsLoading }) => {
     try {
       // Short delay for better UX
       setTimeout(async () => {
-        const response = await axios.post(`${API_URL}/api/explanation`, {
+        const response = await axios.post('/api/explanation', {
           question: questionText
         });
         setExplanation(response.data.explanation);
