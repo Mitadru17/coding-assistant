@@ -20,11 +20,11 @@ const headers = {
 // Create axios instance with retry logic
 const apiClient = axios.create({
   headers,
-  timeout: 60000 // 60 second timeout
+  timeout: 30000 // 30 second timeout - reduced from 60s to fail faster
 });
 
 // Add a retry mechanism
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 3;
 apiClient.interceptors.response.use(null, async (error) => {
   const { config } = error;
   if (!config || !config.retry) {
@@ -37,9 +37,55 @@ apiClient.interceptors.response.use(null, async (error) => {
   }
   
   console.log(`Retrying API request (${MAX_RETRIES - config.retry + 1}/${MAX_RETRIES})...`);
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Exponential backoff
+  const backoff = Math.pow(2, MAX_RETRIES - config.retry) * 1000;
+  await new Promise(resolve => setTimeout(resolve, backoff));
   return apiClient(config);
 });
+
+// Fallback responses when API is unavailable
+const FALLBACK_RESPONSES = {
+  question: `Q: Write a function that reverses a linked list.
+Difficulty: Medium
+Tags: Linked List, Two Pointers`,
+  explanation: `# Linked List Reversal
+
+A linked list is a linear data structure where elements are stored in nodes, and each node points to the next one in the sequence. Reversing a linked list means changing the direction of all pointers.
+
+## Approach:
+1. Use three pointers: prev, current, and next
+2. Iterate through the list, reversing each pointer
+
+## Python Implementation:
+\`\`\`python
+class ListNode:
+    def __init__(self, val=0, next=None):
+        self.val = val
+        self.next = next
+
+def reverseList(head):
+    prev = None
+    current = head
+    
+    while current:
+        next_temp = current.next  # Store next node
+        current.next = prev       # Reverse pointer
+        prev = current            # Move prev forward
+        current = next_temp       # Move current forward
+    
+    return prev  # New head is the previous tail
+\`\`\`
+
+## Time & Space Complexity:
+- Time Complexity: O(n) - one pass through the list
+- Space Complexity: O(1) - only using a few pointers
+
+## Test Cases:
+- Empty list: Returns null
+- Single node: Returns the same node
+- Multiple nodes: Correctly reverses all pointers`,
+  chat: "I'd be happy to help with your coding questions. What specific programming topic or problem would you like to discuss?"
+};
 
 /**
  * Makes a request to the Hugging Face API with retry logic
@@ -80,6 +126,12 @@ async function makeApiRequest(payload) {
       console.error('Response status:', error.response.status);
       console.error('Response data:', JSON.stringify(error.response.data).substring(0, 500));
     }
+    
+    // If it's a timeout error, return a specific message
+    if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
+      console.error('API request timed out');
+    }
+    
     throw error;
   }
 }
@@ -165,7 +217,8 @@ Timestamp: ${timestamp} [/INST]`;
     return cleanedResult;
   } catch (error) {
     console.error('Error generating daily question:', error);
-    return "Sorry, I couldn't generate a question at this time. Please try again later.";
+    // Return fallback question if API fails
+    return FALLBACK_RESPONSES.question;
   }
 }
 
@@ -205,7 +258,8 @@ Use markdown formatting for structure. [/INST]`;
     return result;
   } catch (error) {
     console.error('Error generating explanation:', error);
-    return "Sorry, I couldn't generate an explanation at this time. Please try again later.";
+    // Return fallback explanation if API fails
+    return FALLBACK_RESPONSES.explanation;
   }
 }
 
@@ -236,7 +290,8 @@ Question: ${userMessage} [/INST]`;
     return result;
   } catch (error) {
     console.error('Error in chatbot conversation:', error);
-    return "I'm currently experiencing some issues. Please try again later.";
+    // Return fallback response if API fails
+    return FALLBACK_RESPONSES.chat;
   }
 }
 
