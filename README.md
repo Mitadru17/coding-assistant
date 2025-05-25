@@ -106,4 +106,4 @@ npm run dev
 ## Future Improvements
 
 - Add caching to store daily questions
-- Add user authentication and tracking of solved questions 
+- Add user authentication and tracking of solved questions
