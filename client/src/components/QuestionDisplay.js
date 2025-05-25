@@ -15,7 +15,7 @@ const QuestionDisplay = ({ question, setQuestion, isLoading, setIsLoading }) => 
     setIsLoading(true);
     setShowContent(false);
     try {
-      const response = await axios.get('/daily-question');
+      const response = await axios.get('/api/daily-question');
       
       // Short delay for better UX
       setTimeout(() => {

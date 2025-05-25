@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const geminiRoutes = require('./routes/geminiRoutes');
 
 // Debug environment variables
@@ -15,8 +16,16 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Routes
-app.use('/', geminiRoutes);
+// Serve static files from the React app build directory
+app.use(express.static(path.join(__dirname, 'client/build')));
+
+// API Routes
+app.use('/api', geminiRoutes);
+
+// Serve React app for any other requests
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -10,7 +10,7 @@ router.get('/', (req, res) => {
   res.json({ 
     status: 'success', 
     message: 'Coding Assistant API is running',
-    endpoints: ['/daily-question', '/explanation', '/chat']
+    endpoints: ['/api/daily-question', '/api/explanation', '/api/chat']
   });
 });
 

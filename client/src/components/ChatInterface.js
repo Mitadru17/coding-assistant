@@ -25,7 +25,7 @@ const ChatInterface = () => {
     
     try {
       // Call backend API
-      const response = await axios.post('/chat', { message: userMessage.text });
+      const response = await axios.post('/api/chat', { message: userMessage.text });
       
       // Add bot response to chat
       const botMessage = {

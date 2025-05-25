@@ -20,7 +20,7 @@ const ExplanationForm = ({ setExplanation, isLoading, setIsLoading }) => {
     try {
       // Short delay for better UX
       setTimeout(async () => {
-        const response = await axios.post('/explanation', {
+        const response = await axios.post('/api/explanation', {
           question: questionText
         });
         setExplanation(response.data.explanation);
